@@ -75,5 +75,8 @@
   },
   "trustedDependencies": [
     "node-pty"
-  ]
+  ],
+  "dependencies": {
+    "vite": "^8.0.0"
+  }
 }
