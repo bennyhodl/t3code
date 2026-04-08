@@ -32,6 +32,7 @@ import { GitCoreLive } from "./git/Layers/GitCore";
 import { GitHubCliLive } from "./git/Layers/GitHubCli";
 import { GitStatusBroadcasterLive } from "./git/Layers/GitStatusBroadcaster";
 import { RoutingTextGenerationLive } from "./git/Layers/RoutingTextGeneration";
+import { LinearManagerLive } from "./linear/Layers/LinearManager";
 import { ServiceManagerLive } from "./services/Layers/ServiceManager";
 import { TerminalManagerLive } from "./terminal/Layers/Manager";
 import { GitManagerLive } from "./git/Layers/GitManager";
@@ -195,6 +196,7 @@ const RuntimeDependenciesLive = ReactorLayerLive.pipe(
   Layer.provideMerge(ProviderLayerLive),
   Layer.provideMerge(TerminalLayerLive),
   Layer.provideMerge(ServiceManagerLive),
+  Layer.provideMerge(LinearManagerLive),
   Layer.provideMerge(PersistenceLayerLive),
   Layer.provideMerge(KeybindingsLive),
   Layer.provideMerge(ProviderRegistryLive),

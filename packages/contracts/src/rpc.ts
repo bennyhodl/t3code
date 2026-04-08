@@ -64,6 +64,13 @@ import {
   TaskState,
 } from "./services";
 import {
+  LinearAssignProjectInput,
+  LinearAssignProjectResult,
+  LinearError,
+  LinearSnapshot,
+  LinearStatusEvent,
+} from "./linear";
+import {
   TerminalClearInput,
   TerminalCloseInput,
   TerminalError,
@@ -123,6 +130,11 @@ export const WS_METHODS = {
   serverGetSettings: "server.getSettings",
   serverUpdateSettings: "server.updateSettings",
 
+  // Linear methods
+  linearList: "linear.list",
+  linearRefresh: "linear.refresh",
+  linearAssignProject: "linear.assignProject",
+
   // Services methods
   servicesList: "services.list",
   servicesStart: "services.start",
@@ -136,6 +148,7 @@ export const WS_METHODS = {
   // Streaming subscriptions
   subscribeServicesStatus: "subscribeServicesStatus",
   subscribeServiceLogs: "subscribeServiceLogs",
+  subscribeLinearStatus: "subscribeLinearStatus",
   subscribeGitStatus: "subscribeGitStatus",
   subscribeOrchestrationDomainEvents: "subscribeOrchestrationDomainEvents",
   subscribeTerminalEvents: "subscribeTerminalEvents",
@@ -357,6 +370,33 @@ export const WsSubscribeServerLifecycleRpc = Rpc.make(WS_METHODS.subscribeServer
   stream: true,
 });
 
+// ── Linear RPCs ───────────────────────────────────────────────────────
+
+export const WsLinearListRpc = Rpc.make(WS_METHODS.linearList, {
+  payload: Schema.Struct({}),
+  success: LinearSnapshot,
+  error: LinearError,
+});
+
+export const WsLinearRefreshRpc = Rpc.make(WS_METHODS.linearRefresh, {
+  payload: Schema.Struct({}),
+  success: LinearSnapshot,
+  error: LinearError,
+});
+
+export const WsLinearAssignProjectRpc = Rpc.make(WS_METHODS.linearAssignProject, {
+  payload: LinearAssignProjectInput,
+  success: LinearAssignProjectResult,
+  error: LinearError,
+});
+
+export const WsSubscribeLinearStatusRpc = Rpc.make(WS_METHODS.subscribeLinearStatus, {
+  payload: Schema.Struct({}),
+  success: LinearStatusEvent,
+  error: LinearError,
+  stream: true,
+});
+
 // ── Services RPCs ──────────────────────────────────────────────────────
 
 export const WsServicesListRpc = Rpc.make(WS_METHODS.servicesList, {
@@ -451,6 +491,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsOrchestrationGetTurnDiffRpc,
   WsOrchestrationGetFullThreadDiffRpc,
   WsOrchestrationReplayEventsRpc,
+  WsLinearListRpc,
+  WsLinearRefreshRpc,
+  WsLinearAssignProjectRpc,
+  WsSubscribeLinearStatusRpc,
   WsServicesListRpc,
   WsServicesStartRpc,
   WsServicesStopRpc,

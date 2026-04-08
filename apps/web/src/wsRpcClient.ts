@@ -100,6 +100,12 @@ export interface WsRpcClient {
     readonly subscribeConfig: RpcStreamMethod<typeof WS_METHODS.subscribeServerConfig>;
     readonly subscribeLifecycle: RpcStreamMethod<typeof WS_METHODS.subscribeServerLifecycle>;
   };
+  readonly linear: {
+    readonly list: RpcUnaryNoArgMethod<typeof WS_METHODS.linearList>;
+    readonly refresh: RpcUnaryNoArgMethod<typeof WS_METHODS.linearRefresh>;
+    readonly assignProject: RpcUnaryMethod<typeof WS_METHODS.linearAssignProject>;
+    readonly onStatus: RpcStreamMethod<typeof WS_METHODS.subscribeLinearStatus>;
+  };
   readonly services: {
     readonly list: RpcUnaryNoArgMethod<typeof WS_METHODS.servicesList>;
     readonly start: RpcUnaryMethod<typeof WS_METHODS.servicesStart>;
@@ -238,6 +244,18 @@ export function createWsRpcClient(transport = new WsTransport()): WsRpcClient {
       subscribeLifecycle: (listener, options) =>
         transport.subscribe(
           (client) => client[WS_METHODS.subscribeServerLifecycle]({}),
+          listener,
+          options,
+        ),
+    },
+    linear: {
+      list: () => transport.request((client) => client[WS_METHODS.linearList]({})),
+      refresh: () => transport.request((client) => client[WS_METHODS.linearRefresh]({})),
+      assignProject: (input) =>
+        transport.request((client) => client[WS_METHODS.linearAssignProject](input)),
+      onStatus: (listener, options) =>
+        transport.subscribe(
+          (client) => client[WS_METHODS.subscribeLinearStatus]({}),
           listener,
           options,
         ),

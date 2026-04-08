@@ -42,6 +42,7 @@ import { ProviderRegistry } from "./provider/Services/ProviderRegistry";
 import { ServerLifecycleEvents } from "./serverLifecycleEvents";
 import { ServerRuntimeStartup } from "./serverRuntimeStartup";
 import { ServerSettingsService } from "./serverSettings";
+import { LinearManager } from "./linear/Services/LinearManager";
 import { ServiceManager } from "./services/Services/ServiceManager";
 import { TerminalManager } from "./terminal/Services/Manager";
 import { WorkspaceEntries } from "./workspace/Services/WorkspaceEntries";
@@ -59,6 +60,7 @@ const WsRpcLayer = WsRpcGroup.toLayer(
     const gitManager = yield* GitManager;
     const git = yield* GitCore;
     const gitStatusBroadcaster = yield* GitStatusBroadcaster;
+    const linearManager = yield* LinearManager;
     const serviceManager = yield* ServiceManager;
     const terminalManager = yield* TerminalManager;
     const providerRegistry = yield* ProviderRegistry;
@@ -736,6 +738,24 @@ const WsRpcLayer = WsRpcGroup.toLayer(
           }),
           { "rpc.aggregate": "server" },
         ),
+      // ── Linear ────────────────────────────────────────────────────────
+      [WS_METHODS.linearList]: (_input) =>
+        observeRpcEffect(WS_METHODS.linearList, linearManager.list(), {
+          "rpc.aggregate": "linear",
+        }),
+      [WS_METHODS.linearRefresh]: (_input) =>
+        observeRpcEffect(WS_METHODS.linearRefresh, linearManager.refresh(), {
+          "rpc.aggregate": "linear",
+        }),
+      [WS_METHODS.linearAssignProject]: (input) =>
+        observeRpcEffect(WS_METHODS.linearAssignProject, linearManager.assignProject(input), {
+          "rpc.aggregate": "linear",
+        }),
+      [WS_METHODS.subscribeLinearStatus]: (_input) =>
+        observeRpcStream(WS_METHODS.subscribeLinearStatus, linearManager.streamStatus, {
+          "rpc.aggregate": "linear",
+        }),
+
       // ── Services ──────────────────────────────────────────────────────
       [WS_METHODS.servicesList]: (_input) =>
         observeRpcEffect(WS_METHODS.servicesList, serviceManager.list(), {

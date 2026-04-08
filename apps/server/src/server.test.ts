@@ -73,6 +73,7 @@ import {
 import { ServerLifecycleEvents, type ServerLifecycleEventsShape } from "./serverLifecycleEvents.ts";
 import { ServerRuntimeStartup, type ServerRuntimeStartupShape } from "./serverRuntimeStartup.ts";
 import { ServerSettingsService, type ServerSettingsShape } from "./serverSettings.ts";
+import { LinearManager } from "./linear/Services/LinearManager.ts";
 import { ServiceManager } from "./services/Services/ServiceManager.ts";
 import { TerminalManager, type TerminalManagerShape } from "./terminal/Services/Manager.ts";
 import {
@@ -430,6 +431,19 @@ const buildAppUnderTest = (options?: {
             Effect.succeed({ id: "", status: "stopped", intervalSeconds: 30, depends: [] }),
           stopTask: () =>
             Effect.succeed({ id: "", status: "stopped", intervalSeconds: 30, depends: [] }),
+          streamStatus: Stream.empty,
+        }),
+      ),
+      Layer.provide(
+        Layer.mock(LinearManager)({
+          list: () => Effect.succeed({ issues: [], projects: [], connected: false }),
+          refresh: () => Effect.succeed({ issues: [], projects: [], connected: false }),
+          assignProject: () =>
+            Effect.succeed({
+              issueId: "",
+              identifier: "",
+              project: { id: "", name: "", color: "" },
+            }),
           streamStatus: Stream.empty,
         }),
       ),

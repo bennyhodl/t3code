@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ServicesRouteImport } from './routes/services'
+import { Route as LinearRouteImport } from './routes/linear'
 import { Route as ChatRouteImport } from './routes/_chat'
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
 import { Route as SettingsGeneralRouteImport } from './routes/settings.general'
@@ -25,6 +26,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ServicesRoute = ServicesRouteImport.update({
   id: '/services',
   path: '/services',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LinearRoute = LinearRouteImport.update({
+  id: '/linear',
+  path: '/linear',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -54,6 +60,7 @@ const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof ChatIndexRoute
+  '/linear': typeof LinearRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRouteWithChildren
   '/$threadId': typeof ChatThreadIdRoute
@@ -61,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/settings/general': typeof SettingsGeneralRoute
 }
 export interface FileRoutesByTo {
+  '/linear': typeof LinearRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRouteWithChildren
   '/$threadId': typeof ChatThreadIdRoute
@@ -71,6 +79,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_chat': typeof ChatRouteWithChildren
+  '/linear': typeof LinearRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRouteWithChildren
   '/_chat/$threadId': typeof ChatThreadIdRoute
@@ -82,6 +91,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/linear'
     | '/services'
     | '/settings'
     | '/$threadId'
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/settings/general'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/linear'
     | '/services'
     | '/settings'
     | '/$threadId'
@@ -98,6 +109,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_chat'
+    | '/linear'
     | '/services'
     | '/settings'
     | '/_chat/$threadId'
@@ -108,6 +120,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
+  LinearRoute: typeof LinearRoute
   ServicesRoute: typeof ServicesRoute
   SettingsRoute: typeof SettingsRouteWithChildren
 }
@@ -126,6 +139,13 @@ declare module '@tanstack/react-router' {
       path: '/services'
       fullPath: '/services'
       preLoaderRoute: typeof ServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/linear': {
+      id: '/linear'
+      path: '/linear'
+      fullPath: '/linear'
+      preLoaderRoute: typeof LinearRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_chat': {
@@ -194,6 +214,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
+  LinearRoute: LinearRoute,
   ServicesRoute: ServicesRoute,
   SettingsRoute: SettingsRouteWithChildren,
 }

@@ -77,6 +77,11 @@ export const ObservabilitySettings = Schema.Struct({
 });
 export type ObservabilitySettings = typeof ObservabilitySettings.Type;
 
+export const LinearSettings = Schema.Struct({
+  apiToken: TrimmedString.pipe(Schema.withDecodingDefault(() => "")),
+});
+export type LinearSettings = typeof LinearSettings.Type;
+
 export const ServerSettings = Schema.Struct({
   enableAssistantStreaming: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
   defaultThreadEnvMode: ThreadEnvMode.pipe(
@@ -95,6 +100,9 @@ export const ServerSettings = Schema.Struct({
     claudeAgent: ClaudeSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
   observability: ObservabilitySettings.pipe(Schema.withDecodingDefault(() => ({}))),
+
+  // Integrations
+  linear: LinearSettings.pipe(Schema.withDecodingDefault(() => ({}))),
 });
 export type ServerSettings = typeof ServerSettings.Type;
 
@@ -175,6 +183,11 @@ export const ServerSettingsPatch = Schema.Struct({
     Schema.Struct({
       codex: Schema.optionalKey(CodexSettingsPatch),
       claudeAgent: Schema.optionalKey(ClaudeSettingsPatch),
+    }),
+  ),
+  linear: Schema.optionalKey(
+    Schema.Struct({
+      apiToken: Schema.optionalKey(Schema.String),
     }),
   ),
 });

@@ -7,6 +7,7 @@ import {
   PlusIcon,
   ServerIcon,
   SettingsIcon,
+  TicketIcon,
   SquarePenIcon,
   TerminalIcon,
   TriangleAlertIcon,
@@ -78,6 +79,7 @@ import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useThreadActions } from "../hooks/useThreadActions";
 import { toastManager } from "./ui/toast";
 import { formatRelativeTimeLabel } from "../timestampFormat";
+import { LinearSidebarStatus } from "./linear/LinearSidebarStatus";
 import { ServicesSidebarStatus } from "./services/ServicesSidebarStatus";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import {
@@ -2142,6 +2144,17 @@ export default function Sidebar() {
                   <ServerIcon className="size-3.5" />
                   <span className="text-xs">Services</span>
                   <ServicesSidebarStatus />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  size="sm"
+                  className="gap-2 px-2 py-1.5 text-muted-foreground/70 hover:bg-accent hover:text-foreground"
+                  onClick={() => void navigate({ to: "/linear" })}
+                >
+                  <TicketIcon className="size-3.5" />
+                  <span className="text-xs">Linear</span>
+                  <LinearSidebarStatus />
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
