@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import nodePath from "node:path";
+
 import {
   CommandId,
   DEFAULT_PROVIDER_INTERACTION_MODE,
@@ -26,8 +29,25 @@ import { OrchestrationEngineService } from "./orchestration/Services/Orchestrati
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery";
 import { OrchestrationReactor } from "./orchestration/Services/OrchestrationReactor";
 import { ServerLifecycleEvents } from "./serverLifecycleEvents";
+import { loadServiceConfig } from "./services/Layers/ServiceConfigLoader";
 import { ServerSettingsService } from "./serverSettings";
 import { AnalyticsService } from "./telemetry/Services/AnalyticsService";
+
+/**
+ * Walk up from a directory to find the nearest git repo root.
+ * Returns the directory containing .git, or null if none found.
+ */
+function findGitRoot(startDir: string): string | null {
+  let dir = nodePath.resolve(startDir);
+  const root = nodePath.parse(dir).root;
+  while (dir !== root) {
+    if (fs.existsSync(nodePath.join(dir, ".git"))) {
+      return dir;
+    }
+    dir = nodePath.dirname(dir);
+  }
+  return null;
+}
 
 const isWildcardHost = (host: string | undefined): boolean =>
   host === "0.0.0.0" || host === "::" || host === "[::]";
@@ -216,6 +236,69 @@ const autoBootstrapWelcome = Effect.gen(function* () {
       }
     });
   }
+
+  // ── Auto-create projects from lygos-services.yaml process cwds ──────
+  yield* Effect.gen(function* () {
+    let config;
+    try {
+      config = loadServiceConfig(serverConfig.cwd);
+    } catch (err) {
+      yield* Effect.logWarning("[project-sync] failed to load service config", { cause: err });
+      config = null;
+    }
+    if (!config) {
+      yield* Effect.logInfo("[project-sync] no lygos-services.yaml found, skipping project sync");
+      return;
+    }
+
+    yield* Effect.logInfo("[project-sync] loaded service config", {
+      serviceCount: config.services.size,
+    });
+
+    const seenRoots = new Set<string>();
+    for (const [serviceId, def] of config.services) {
+      if (def.type !== "process" || !def.cwd) continue;
+
+      const repoRoot = findGitRoot(def.cwd);
+      yield* Effect.logDebug("[project-sync] checking service", {
+        serviceId,
+        cwd: def.cwd,
+        repoRoot: repoRoot ?? "not found",
+      });
+
+      if (!repoRoot || seenRoots.has(repoRoot)) continue;
+      seenRoots.add(repoRoot);
+
+      const existing = yield* projectionReadModelQuery.getActiveProjectByWorkspaceRoot(repoRoot);
+      if (Option.isSome(existing)) {
+        yield* Effect.logDebug("[project-sync] project already exists", {
+          repoRoot,
+          projectId: existing.value.id,
+        });
+        continue;
+      }
+
+      const title = path.basename(repoRoot) || "project";
+      yield* Effect.logInfo("[project-sync] creating project", { title, repoRoot });
+      yield* orchestrationEngine
+        .dispatch({
+          type: "project.create",
+          commandId: CommandId.makeUnsafe(crypto.randomUUID()),
+          projectId: ProjectId.makeUnsafe(crypto.randomUUID()),
+          title,
+          workspaceRoot: repoRoot,
+          createdAt: new Date().toISOString(),
+        })
+        .pipe(
+          Effect.catch((err) =>
+            Effect.logWarning("[project-sync] failed to create project", {
+              repoRoot,
+              cause: err,
+            }),
+          ),
+        );
+    }
+  });
 
   const segments = serverConfig.cwd.split(/[/\\]/).filter(Boolean);
   const projectName = segments[segments.length - 1] ?? "project";
