@@ -559,11 +559,38 @@ function SidebarThreadRow(props: SidebarThreadRowProps) {
   );
 }
 
-function LygosWordmark() {
+function LygosLogo() {
   return (
-    <span aria-label="Lygos" className="text-sm font-semibold tracking-tight text-foreground">
-      Lygos
-    </span>
+    <svg
+      aria-label="Lygos"
+      width="20"
+      height="20"
+      viewBox="0 0 58 58"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="shrink-0"
+    >
+      <path
+        d="M0.108 33.745a1.47 1.47 0 0 1-.108-.538V1.466C0 .656.325 0 1.468 0h11.522c.389 0 .762.156 1.037.43l10.131 10.118a1.464 1.464 0 0 1 0 2.072L2.506 34.243a1.468 1.468 0 0 1-2.398-.498Z"
+        fill="#00ACC1"
+      />
+      <path
+        d="M57.753 1.466v11.506a1.46 1.46 0 0 1-.108.557 1.47 1.47 0 0 1-.323.48L47.191 24.125a1.467 1.467 0 0 1-2.075 0L23.463 2.503a1.468 1.468 0 0 1 .48-2.395A1.47 1.47 0 0 1 24.501 0h31.784c.81 0 1.468.656 1.468 1.466Z"
+        fill="#00ACC1"
+      />
+      <path
+        d="M57.646 23.93c.07.17.107.353.107.538v31.74a1.468 1.468 0 0 1-1.468 1.467H44.764a1.467 1.467 0 0 1-1.038-.43L33.595 47.127a1.464 1.464 0 0 1 0-2.072l21.652-21.623a1.468 1.468 0 0 1 2.399.498Z"
+        fill="#00ACC1"
+      />
+      <path
+        d="M16.318 27.801 27.839 16.296a1.467 1.467 0 0 1 2.075 0L41.435 27.8a1.464 1.464 0 0 1 0 2.073L29.914 41.38a1.467 1.467 0 0 1-2.075 0L16.318 29.874a1.464 1.464 0 0 1 0-2.073Z"
+        fill="#00ACC1"
+      />
+      <path
+        d="M34.613 55.671a1.467 1.467 0 0 1-1.36 2.004H1.468A1.468 1.468 0 0 1 0 56.209V44.703c.006-.19.042-.378.108-.557a1.47 1.47 0 0 1 .323-.48L10.562 33.55a1.467 1.467 0 0 1 2.075 0l21.652 21.623c.146.138.257.31.324.498Z"
+        fill="#00ACC1"
+      />
+    </svg>
   );
 }
 
@@ -1938,10 +1965,7 @@ export default function Sidebar() {
               className="ml-1 flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-md outline-hidden ring-ring transition-colors hover:text-foreground focus-visible:ring-2"
               to="/"
             >
-              <LygosWordmark />
-              <span className="truncate text-sm font-medium tracking-tight text-muted-foreground">
-                Dev
-              </span>
+              <LygosLogo />
               <span className="rounded-full bg-muted/50 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-muted-foreground/60">
                 {APP_STAGE_LABEL}
               </span>
