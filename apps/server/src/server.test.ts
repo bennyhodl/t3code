@@ -74,6 +74,7 @@ import { ServerLifecycleEvents, type ServerLifecycleEventsShape } from "./server
 import { ServerRuntimeStartup, type ServerRuntimeStartupShape } from "./serverRuntimeStartup.ts";
 import { ServerSettingsService, type ServerSettingsShape } from "./serverSettings.ts";
 import { LinearManager } from "./linear/Services/LinearManager.ts";
+import { SetupManager } from "./setup/Services/SetupManager.ts";
 import { ServiceManager } from "./services/Services/ServiceManager.ts";
 import { TerminalManager, type TerminalManagerShape } from "./terminal/Services/Manager.ts";
 import {
@@ -435,17 +436,24 @@ const buildAppUnderTest = (options?: {
         }),
       ),
       Layer.provide(
-        Layer.mock(LinearManager)({
-          list: () => Effect.succeed({ issues: [], projects: [], connected: false }),
-          refresh: () => Effect.succeed({ issues: [], projects: [], connected: false }),
-          assignProject: () =>
-            Effect.succeed({
-              issueId: "",
-              identifier: "",
-              project: { id: "", name: "", color: "" },
-            }),
-          streamStatus: Stream.empty,
-        }),
+        Layer.mergeAll(
+          Layer.mock(LinearManager)({
+            list: () => Effect.succeed({ issues: [], projects: [], connected: false }),
+            refresh: () => Effect.succeed({ issues: [], projects: [], connected: false }),
+            assignProject: () =>
+              Effect.succeed({
+                issueId: "",
+                identifier: "",
+                project: { id: "", name: "", color: "" },
+              }),
+            streamStatus: Stream.empty,
+          }),
+          Layer.mock(SetupManager)({
+            list: () => Effect.succeed({ checks: [], checking: false }),
+            check: () => Effect.succeed({ checks: [], checking: false }),
+            streamStatus: Stream.empty,
+          }),
+        ),
       ),
       Layer.provide(workspaceAndProjectServicesLayer),
       Layer.provideMerge(FetchHttpClient.layer),

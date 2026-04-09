@@ -70,6 +70,7 @@ import {
   LinearSnapshot,
   LinearStatusEvent,
 } from "./linear";
+import { SetupCheckInput, SetupError, SetupSnapshot, SetupStatusEvent } from "./setup";
 import {
   TerminalClearInput,
   TerminalCloseInput,
@@ -135,6 +136,10 @@ export const WS_METHODS = {
   linearRefresh: "linear.refresh",
   linearAssignProject: "linear.assignProject",
 
+  // Setup methods
+  setupList: "setup.list",
+  setupCheck: "setup.check",
+
   // Services methods
   servicesList: "services.list",
   servicesStart: "services.start",
@@ -146,6 +151,7 @@ export const WS_METHODS = {
   servicesGetLogs: "services.getLogs",
 
   // Streaming subscriptions
+  subscribeSetupStatus: "subscribeSetupStatus",
   subscribeServicesStatus: "subscribeServicesStatus",
   subscribeServiceLogs: "subscribeServiceLogs",
   subscribeLinearStatus: "subscribeLinearStatus",
@@ -370,6 +376,27 @@ export const WsSubscribeServerLifecycleRpc = Rpc.make(WS_METHODS.subscribeServer
   stream: true,
 });
 
+// ── Setup RPCs ────────────────────────────────────────────────────────
+
+export const WsSetupListRpc = Rpc.make(WS_METHODS.setupList, {
+  payload: Schema.Struct({}),
+  success: SetupSnapshot,
+  error: SetupError,
+});
+
+export const WsSetupCheckRpc = Rpc.make(WS_METHODS.setupCheck, {
+  payload: SetupCheckInput,
+  success: SetupSnapshot,
+  error: SetupError,
+});
+
+export const WsSubscribeSetupStatusRpc = Rpc.make(WS_METHODS.subscribeSetupStatus, {
+  payload: Schema.Struct({}),
+  success: SetupStatusEvent,
+  error: SetupError,
+  stream: true,
+});
+
 // ── Linear RPCs ───────────────────────────────────────────────────────
 
 export const WsLinearListRpc = Rpc.make(WS_METHODS.linearList, {
@@ -495,6 +522,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsLinearRefreshRpc,
   WsLinearAssignProjectRpc,
   WsSubscribeLinearStatusRpc,
+  WsSetupListRpc,
+  WsSetupCheckRpc,
+  WsSubscribeSetupStatusRpc,
   WsServicesListRpc,
   WsServicesStartRpc,
   WsServicesStopRpc,

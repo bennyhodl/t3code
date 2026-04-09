@@ -39,6 +39,7 @@ import {
   useComposerDraftStore,
 } from "../composerDraftStore";
 import { useLinearStore } from "../linearStore";
+import { useSetupStore } from "../setupStore";
 import { useServicesStore } from "../servicesStore";
 import { useStore } from "../store";
 import { useUiStateStore } from "../uiStateStore";
@@ -570,6 +571,9 @@ function EventRouter() {
     const unsubLinearStatus = wsRpc.linear.onStatus((snapshot) => {
       useLinearStore.getState().applySnapshot(snapshot);
     });
+    const unsubSetupStatus = wsRpc.setup.onStatus((snapshot) => {
+      useSetupStore.getState().applySnapshot(snapshot);
+    });
     return () => {
       disposed = true;
       disposedRef.current = true;
@@ -581,6 +585,7 @@ function EventRouter() {
       unsubTerminalEvent();
       unsubServicesStatus();
       unsubLinearStatus();
+      unsubSetupStatus();
     };
   }, [
     applyOrchestrationEvents,

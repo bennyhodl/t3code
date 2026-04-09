@@ -100,6 +100,11 @@ export interface WsRpcClient {
     readonly subscribeConfig: RpcStreamMethod<typeof WS_METHODS.subscribeServerConfig>;
     readonly subscribeLifecycle: RpcStreamMethod<typeof WS_METHODS.subscribeServerLifecycle>;
   };
+  readonly setup: {
+    readonly list: RpcUnaryNoArgMethod<typeof WS_METHODS.setupList>;
+    readonly check: RpcUnaryMethod<typeof WS_METHODS.setupCheck>;
+    readonly onStatus: RpcStreamMethod<typeof WS_METHODS.subscribeSetupStatus>;
+  };
   readonly linear: {
     readonly list: RpcUnaryNoArgMethod<typeof WS_METHODS.linearList>;
     readonly refresh: RpcUnaryNoArgMethod<typeof WS_METHODS.linearRefresh>;
@@ -244,6 +249,16 @@ export function createWsRpcClient(transport = new WsTransport()): WsRpcClient {
       subscribeLifecycle: (listener, options) =>
         transport.subscribe(
           (client) => client[WS_METHODS.subscribeServerLifecycle]({}),
+          listener,
+          options,
+        ),
+    },
+    setup: {
+      list: () => transport.request((client) => client[WS_METHODS.setupList]({})),
+      check: (input) => transport.request((client) => client[WS_METHODS.setupCheck](input)),
+      onStatus: (listener, options) =>
+        transport.subscribe(
+          (client) => client[WS_METHODS.subscribeSetupStatus]({}),
           listener,
           options,
         ),

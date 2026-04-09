@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as LinearRouteImport } from './routes/linear'
@@ -18,6 +19,11 @@ import { Route as SettingsGeneralRouteImport } from './routes/settings.general'
 import { Route as SettingsArchivedRouteImport } from './routes/settings.archived'
 import { Route as ChatThreadIdRouteImport } from './routes/_chat.$threadId'
 
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/linear': typeof LinearRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/setup': typeof SetupRoute
   '/$threadId': typeof ChatThreadIdRoute
   '/settings/archived': typeof SettingsArchivedRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByTo {
   '/linear': typeof LinearRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/setup': typeof SetupRoute
   '/$threadId': typeof ChatThreadIdRoute
   '/settings/archived': typeof SettingsArchivedRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -82,6 +90,7 @@ export interface FileRoutesById {
   '/linear': typeof LinearRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/setup': typeof SetupRoute
   '/_chat/$threadId': typeof ChatThreadIdRoute
   '/settings/archived': typeof SettingsArchivedRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
     | '/linear'
     | '/services'
     | '/settings'
+    | '/setup'
     | '/$threadId'
     | '/settings/archived'
     | '/settings/general'
@@ -102,6 +112,7 @@ export interface FileRouteTypes {
     | '/linear'
     | '/services'
     | '/settings'
+    | '/setup'
     | '/$threadId'
     | '/settings/archived'
     | '/settings/general'
@@ -112,6 +123,7 @@ export interface FileRouteTypes {
     | '/linear'
     | '/services'
     | '/settings'
+    | '/setup'
     | '/_chat/$threadId'
     | '/settings/archived'
     | '/settings/general'
@@ -123,10 +135,18 @@ export interface RootRouteChildren {
   LinearRoute: typeof LinearRoute
   ServicesRoute: typeof ServicesRoute
   SettingsRoute: typeof SettingsRouteWithChildren
+  SetupRoute: typeof SetupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -217,6 +237,7 @@ const rootRouteChildren: RootRouteChildren = {
   LinearRoute: LinearRoute,
   ServicesRoute: ServicesRoute,
   SettingsRoute: SettingsRouteWithChildren,
+  SetupRoute: SetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

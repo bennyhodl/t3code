@@ -4,6 +4,7 @@ import {
   ChevronRightIcon,
   FolderIcon,
   GitPullRequestIcon,
+  MonitorCheckIcon,
   PlusIcon,
   ServerIcon,
   SettingsIcon,
@@ -81,6 +82,7 @@ import { toastManager } from "./ui/toast";
 import { formatRelativeTimeLabel } from "../timestampFormat";
 import { LinearSidebarStatus } from "./linear/LinearSidebarStatus";
 import { ServicesSidebarStatus } from "./services/ServicesSidebarStatus";
+import { SetupSidebarStatus } from "./setup/SetupSidebarStatus";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import {
   getArm64IntelBuildWarningDescription,
@@ -2155,6 +2157,17 @@ export default function Sidebar() {
                   <TicketIcon className="size-3.5" />
                   <span className="text-xs">Linear</span>
                   <LinearSidebarStatus />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  size="sm"
+                  className="gap-2 px-2 py-1.5 text-muted-foreground/70 hover:bg-accent hover:text-foreground"
+                  onClick={() => void navigate({ to: "/setup" })}
+                >
+                  <MonitorCheckIcon className="size-3.5" />
+                  <span className="text-xs">Setup</span>
+                  <SetupSidebarStatus />
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
