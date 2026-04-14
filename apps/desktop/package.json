@@ -26,5 +26,5 @@
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
-  "productName": "Lygos Dev (Alpha)"
+  "productName": "Lygos Dev"
 }

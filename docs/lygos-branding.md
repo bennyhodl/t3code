@@ -24,7 +24,7 @@ Source logos stored in `/assets/lygos-brand/` (copied from `/lygos-logos/`).
 | `apps/web/src/branding.ts`                            | `APP_BASE_NAME = "Lygos Dev"`                               |
 | `apps/web/index.html`                                 | `<title>Lygos Dev</title>`                                  |
 | `apps/desktop/src/main.ts`                            | `APP_DISPLAY_NAME`, `APP_USER_MODEL_ID`, error dialog title |
-| `apps/desktop/package.json`                           | `productName: "Lygos Dev (Alpha)"`                          |
+| `apps/desktop/package.json`                           | `productName: "Lygos Dev"`                                  |
 | `apps/web/src/components/Sidebar.tsx`                 | Replaced T3 SVG wordmark with "Lygos" text + "Dev" label    |
 | `apps/web/src/components/settings/SettingsPanels.tsx` | User-facing strings (2 occurrences)                         |
 | `apps/web/src/components/desktopUpdate.logic.ts`      | All "T3 Code" -> "Lygos Dev" in update messages             |
