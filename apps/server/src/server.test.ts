@@ -438,14 +438,9 @@ const buildAppUnderTest = (options?: {
       Layer.provide(
         Layer.mergeAll(
           Layer.mock(LinearManager)({
-            list: () => Effect.succeed({ issues: [], projects: [], connected: false }),
-            refresh: () => Effect.succeed({ issues: [], projects: [], connected: false }),
-            assignProject: () =>
-              Effect.succeed({
-                issueId: "",
-                identifier: "",
-                project: { id: "", name: "", color: "" },
-              }),
+            list: () => Effect.succeed({ issues: [], labels: [], connected: false }),
+            refresh: () => Effect.succeed({ issues: [], labels: [], connected: false }),
+            assignLabel: () => Effect.succeed({ issueId: "", identifier: "", labels: [] }),
             streamStatus: Stream.empty,
           }),
           Layer.mock(SetupManager)({

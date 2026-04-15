@@ -749,8 +749,8 @@ const WsRpcLayer = WsRpcGroup.toLayer(
         observeRpcEffect(WS_METHODS.linearRefresh, linearManager.refresh(), {
           "rpc.aggregate": "linear",
         }),
-      [WS_METHODS.linearAssignProject]: (input) =>
-        observeRpcEffect(WS_METHODS.linearAssignProject, linearManager.assignProject(input), {
+      [WS_METHODS.linearAssignLabel]: (input) =>
+        observeRpcEffect(WS_METHODS.linearAssignLabel, linearManager.assignLabel(input), {
           "rpc.aggregate": "linear",
         }),
       [WS_METHODS.subscribeLinearStatus]: (_input) =>

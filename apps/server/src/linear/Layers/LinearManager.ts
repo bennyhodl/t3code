@@ -8,11 +8,11 @@
  * @module LinearManagerLive
  */
 import {
-  type LinearAssignProjectInput,
-  type LinearAssignProjectResult,
+  type LinearAssignLabelInput,
+  type LinearAssignLabelResult,
   type LinearIssue,
+  type LinearLabel,
   LinearNotConfiguredError,
-  type LinearProject,
   type LinearSnapshot,
   type LinearStatusEvent,
 } from "@t3tools/contracts";
@@ -20,25 +20,25 @@ import { Effect, Layer, Queue, Stream, SynchronizedRef } from "effect";
 
 import { ServerSettingsService } from "../../serverSettings";
 import { LinearManager, type LinearManagerShape } from "../Services/LinearManager";
-import { assignIssueProject, fetchAssignedIssues, fetchProjects } from "./LinearGraphQLClient";
+import { assignIssueLabel, fetchAssignedIssues, fetchLabels } from "./LinearGraphQLClient";
 
 const POLL_INTERVAL_MS = 60_000;
 
 interface LinearState {
   issues: LinearIssue[];
-  projects: LinearProject[];
+  labels: LinearLabel[];
   connected: boolean;
 }
 
 function buildSnapshot(state: LinearState): LinearSnapshot {
   return {
     issues: state.issues,
-    projects: state.projects,
+    labels: state.labels,
     connected: state.connected,
   };
 }
 
-const EMPTY_STATE: LinearState = { issues: [], projects: [], connected: false };
+const EMPTY_STATE: LinearState = { issues: [], labels: [], connected: false };
 
 const makeLinearManager = Effect.fn("makeLinearManager")(function* () {
   const serverSettings = yield* ServerSettingsService;
@@ -65,11 +65,11 @@ const makeLinearManager = Effect.fn("makeLinearManager")(function* () {
 
   const fetchAndUpdate = async (token: string): Promise<void> => {
     try {
-      const [issues, projects] = await Effect.runPromise(
-        Effect.all([fetchAssignedIssues(token), fetchProjects(token)]),
+      const [issues, labels] = await Effect.runPromise(
+        Effect.all([fetchAssignedIssues(token), fetchLabels(token)]),
       );
       Effect.runSyncWith(services)(
-        SynchronizedRef.set(stateRef, { issues, projects, connected: true }),
+        SynchronizedRef.set(stateRef, { issues, labels, connected: true }),
       );
       broadcastStatus();
     } catch (err) {
@@ -137,7 +137,7 @@ const makeLinearManager = Effect.fn("makeLinearManager")(function* () {
     list: () =>
       Effect.gen(function* () {
         if (!currentToken) {
-          return { issues: [], projects: [], connected: false };
+          return { issues: [], labels: [], connected: false };
         }
         const state = yield* SynchronizedRef.get(stateRef);
         return buildSnapshot(state);
@@ -146,20 +146,20 @@ const makeLinearManager = Effect.fn("makeLinearManager")(function* () {
     refresh: () =>
       Effect.gen(function* () {
         if (!currentToken) {
-          return { issues: [], projects: [], connected: false };
+          return { issues: [], labels: [], connected: false };
         }
-        const [issues, projects] = yield* Effect.all([
+        const [issues, labels] = yield* Effect.all([
           fetchAssignedIssues(currentToken),
-          fetchProjects(currentToken),
+          fetchLabels(currentToken),
         ]);
-        yield* SynchronizedRef.set(stateRef, { issues, projects, connected: true });
+        yield* SynchronizedRef.set(stateRef, { issues, labels, connected: true });
         broadcastStatus();
         // Restart polling timer so next poll is a full interval from now
         startPolling(currentToken);
-        return buildSnapshot({ issues, projects, connected: true });
+        return buildSnapshot({ issues, labels, connected: true });
       }),
 
-    assignProject: (input: LinearAssignProjectInput) =>
+    assignLabel: (input: LinearAssignLabelInput) =>
       Effect.gen(function* () {
         if (!currentToken) {
           return yield* new LinearNotConfiguredError({
@@ -167,17 +167,17 @@ const makeLinearManager = Effect.fn("makeLinearManager")(function* () {
           });
         }
 
-        const result: LinearAssignProjectResult = yield* assignIssueProject(
+        const result: LinearAssignLabelResult = yield* assignIssueLabel(
           currentToken,
           input.issueId,
-          input.projectId,
+          input.labelId,
         );
 
-        // Update local cache: update the issue's project
+        // Update local cache: update the issue's labels
         yield* SynchronizedRef.update(stateRef, (state) => ({
           ...state,
           issues: state.issues.map((issue) =>
-            issue.id === input.issueId ? { ...issue, project: result.project } : issue,
+            issue.id === input.issueId ? { ...issue, labels: result.labels } : issue,
           ),
         }));
         broadcastStatus();

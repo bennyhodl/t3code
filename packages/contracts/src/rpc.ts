@@ -64,8 +64,8 @@ import {
   TaskState,
 } from "./services";
 import {
-  LinearAssignProjectInput,
-  LinearAssignProjectResult,
+  LinearAssignLabelInput,
+  LinearAssignLabelResult,
   LinearError,
   LinearSnapshot,
   LinearStatusEvent,
@@ -134,7 +134,7 @@ export const WS_METHODS = {
   // Linear methods
   linearList: "linear.list",
   linearRefresh: "linear.refresh",
-  linearAssignProject: "linear.assignProject",
+  linearAssignLabel: "linear.assignLabel",
 
   // Setup methods
   setupList: "setup.list",
@@ -411,9 +411,9 @@ export const WsLinearRefreshRpc = Rpc.make(WS_METHODS.linearRefresh, {
   error: LinearError,
 });
 
-export const WsLinearAssignProjectRpc = Rpc.make(WS_METHODS.linearAssignProject, {
-  payload: LinearAssignProjectInput,
-  success: LinearAssignProjectResult,
+export const WsLinearAssignLabelRpc = Rpc.make(WS_METHODS.linearAssignLabel, {
+  payload: LinearAssignLabelInput,
+  success: LinearAssignLabelResult,
   error: LinearError,
 });
 
@@ -520,7 +520,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsOrchestrationReplayEventsRpc,
   WsLinearListRpc,
   WsLinearRefreshRpc,
-  WsLinearAssignProjectRpc,
+  WsLinearAssignLabelRpc,
   WsSubscribeLinearStatusRpc,
   WsSetupListRpc,
   WsSetupCheckRpc,

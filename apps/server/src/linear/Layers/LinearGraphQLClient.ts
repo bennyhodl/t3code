@@ -6,9 +6,9 @@
  */
 import {
   LinearApiError,
-  type LinearAssignProjectResult,
+  type LinearAssignLabelResult,
   type LinearIssue,
-  type LinearProject,
+  type LinearLabel,
 } from "@t3tools/contracts";
 import { Effect } from "effect";
 
@@ -159,74 +159,74 @@ export function fetchAssignedIssues(token: string): Effect.Effect<LinearIssue[],
   });
 }
 
-// ── Projects query ────────────────────────────────────────────────────
+// ── Labels query ─────────────────────────────────────────────────────
 
-const PROJECTS_QUERY = `
-query LinearProjects {
-  projects(first: 100, filter: { state: { in: ["planned", "started", "paused"] } }) {
+const LABELS_QUERY = `
+query IssueLabels {
+  issueLabels(first: 100) {
     nodes { id name color }
   }
 }
 `;
 
-interface ProjectsResponse {
-  projects: {
+interface LabelsResponse {
+  issueLabels: {
     nodes: readonly { id: string; name: string; color: string }[];
   };
 }
 
-export function fetchProjects(token: string): Effect.Effect<LinearProject[], LinearApiError> {
+export function fetchLabels(token: string): Effect.Effect<LinearLabel[], LinearApiError> {
   return Effect.gen(function* () {
-    const data = yield* linearGraphQL<ProjectsResponse>(token, PROJECTS_QUERY);
-    return [...data.projects.nodes];
+    const data = yield* linearGraphQL<LabelsResponse>(token, LABELS_QUERY);
+    return [...data.issueLabels.nodes];
   });
 }
 
-// ── Assign project mutation ───────────────────────────────────────────
+// ── Assign label mutation ────────────────────────────────────────────
 
-const ASSIGN_PROJECT_MUTATION = `
-mutation AssignProject($issueId: String!, $projectId: String!) {
-  issueUpdate(id: $issueId, input: { projectId: $projectId }) {
+const ASSIGN_LABEL_MUTATION = `
+mutation IssueAddLabel($issueId: String!, $labelId: String!) {
+  issueAddLabel(id: $issueId, labelId: $labelId) {
     success
     issue {
       id
       identifier
-      project { id name color }
+      labels { nodes { id name color } }
     }
   }
 }
 `;
 
-interface AssignProjectResponse {
-  issueUpdate: {
+interface AssignLabelResponse {
+  issueAddLabel: {
     success: boolean;
     issue: {
       id: string;
       identifier: string;
-      project: { id: string; name: string; color: string } | null;
+      labels: { nodes: readonly { id: string; name: string; color: string }[] };
     };
   };
 }
 
-export function assignIssueProject(
+export function assignIssueLabel(
   token: string,
   issueId: string,
-  projectId: string,
-): Effect.Effect<LinearAssignProjectResult, LinearApiError> {
+  labelId: string,
+): Effect.Effect<LinearAssignLabelResult, LinearApiError> {
   return Effect.gen(function* () {
-    const data = yield* linearGraphQL<AssignProjectResponse>(token, ASSIGN_PROJECT_MUTATION, {
+    const data = yield* linearGraphQL<AssignLabelResponse>(token, ASSIGN_LABEL_MUTATION, {
       issueId,
-      projectId,
+      labelId,
     });
 
-    if (!data.issueUpdate.success || !data.issueUpdate.issue.project) {
-      return yield* new LinearApiError({ detail: "Failed to assign project" });
+    if (!data.issueAddLabel.success) {
+      return yield* new LinearApiError({ detail: "Failed to assign label" });
     }
 
     return {
-      issueId: data.issueUpdate.issue.id,
-      identifier: data.issueUpdate.issue.identifier,
-      project: data.issueUpdate.issue.project,
+      issueId: data.issueAddLabel.issue.id,
+      identifier: data.issueAddLabel.issue.identifier,
+      labels: [...data.issueAddLabel.issue.labels.nodes],
     };
   });
 }

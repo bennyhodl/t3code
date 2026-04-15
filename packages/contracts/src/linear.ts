@@ -55,7 +55,8 @@ export type LinearIssue = typeof LinearIssue.Type;
 
 export const LinearSnapshot = Schema.Struct({
   issues: Schema.Array(LinearIssue),
-  projects: Schema.Array(LinearProject),
+  /** Workspace labels available for assignment. */
+  labels: Schema.Array(LinearLabel),
   connected: Schema.Boolean,
 });
 export type LinearSnapshot = typeof LinearSnapshot.Type;
@@ -65,18 +66,18 @@ export type LinearStatusEvent = typeof LinearStatusEvent.Type;
 
 // ── RPC inputs ────────────────────────────────────────────────────────
 
-export const LinearAssignProjectInput = Schema.Struct({
+export const LinearAssignLabelInput = Schema.Struct({
   issueId: Schema.String,
-  projectId: Schema.String,
+  labelId: Schema.String,
 });
-export type LinearAssignProjectInput = typeof LinearAssignProjectInput.Type;
+export type LinearAssignLabelInput = typeof LinearAssignLabelInput.Type;
 
-export const LinearAssignProjectResult = Schema.Struct({
+export const LinearAssignLabelResult = Schema.Struct({
   issueId: Schema.String,
   identifier: Schema.String,
-  project: LinearProject,
+  labels: Schema.Array(LinearLabel),
 });
-export type LinearAssignProjectResult = typeof LinearAssignProjectResult.Type;
+export type LinearAssignLabelResult = typeof LinearAssignLabelResult.Type;
 
 // ── Errors ────────────────────────────────────────────────────────────
 

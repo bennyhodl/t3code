@@ -7,8 +7,8 @@
  * @module LinearManager
  */
 import {
-  type LinearAssignProjectInput,
-  type LinearAssignProjectResult,
+  type LinearAssignLabelInput,
+  type LinearAssignLabelResult,
   type LinearError,
   type LinearSnapshot,
   type LinearStatusEvent,
@@ -20,9 +20,9 @@ export interface LinearManagerShape {
 
   readonly refresh: () => Effect.Effect<LinearSnapshot, LinearError>;
 
-  readonly assignProject: (
-    input: LinearAssignProjectInput,
-  ) => Effect.Effect<LinearAssignProjectResult, LinearError>;
+  readonly assignLabel: (
+    input: LinearAssignLabelInput,
+  ) => Effect.Effect<LinearAssignLabelResult, LinearError>;
 
   readonly streamStatus: Stream.Stream<LinearStatusEvent, LinearError>;
 }

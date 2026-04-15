@@ -107,13 +107,44 @@ jobs:
 
       - name: Build desktop artifact
         shell: bash
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
-          bun run dist:desktop:artifact -- \
-            --platform "${{ matrix.platform }}" \
-            --target "${{ matrix.target }}" \
-            --arch "${{ matrix.arch }}" \
-            --build-version "${{ needs.preflight.outputs.version }}" \
+          args=(
+            --platform "${{ matrix.platform }}"
+            --target "${{ matrix.target }}"
+            --arch "${{ matrix.arch }}"
+            --build-version "${{ needs.preflight.outputs.version }}"
             --verbose
+          )
+
+          # Uncomment the block below once Apple signing secrets are configured:
+          #   CSC_LINK, CSC_KEY_PASSWORD — code signing certificate (.p12)
+          #   APPLE_API_KEY, APPLE_API_KEY_ID, APPLE_API_ISSUER — notarization
+          #
+          # if [[ "${{ matrix.platform }}" == "mac" ]]; then
+          #   has_all() {
+          #     for value in "$@"; do
+          #       if [[ -z "$value" ]]; then return 1; fi
+          #     done
+          #     return 0
+          #   }
+          #   if has_all "$CSC_LINK" "$CSC_KEY_PASSWORD" "$APPLE_API_KEY" "$APPLE_API_KEY_ID" "$APPLE_API_ISSUER"; then
+          #     key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+          #     printf '%s' "$APPLE_API_KEY" > "$key_path"
+          #     export APPLE_API_KEY="$key_path"
+          #     echo "macOS signing enabled."
+          #     args+=(--signed)
+          #   else
+          #     echo "macOS signing disabled (missing one or more Apple signing secrets)."
+          #   fi
+          # fi
+
+          bun run dist:desktop:artifact -- "${args[@]}"
 
       - name: Collect release assets
         shell: bash

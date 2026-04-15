@@ -5,6 +5,7 @@ import {
   PlayIcon,
   RefreshCwIcon,
   SettingsIcon,
+  TagIcon,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -12,7 +13,7 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   DEFAULT_RUNTIME_MODE,
   type LinearIssue,
-  type LinearProject,
+  type LinearLabel,
   type ProjectId,
 } from "@t3tools/contracts";
 
@@ -28,33 +29,60 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../
 
 // ── Priority helpers ──────────────────────────────────────────────────
 
-const priorityConfig: Record<number, { label: string; color: string }> = {
-  0: { label: "No priority", color: "text-muted-foreground/40" },
-  1: { label: "Urgent", color: "text-red-500" },
-  2: { label: "High", color: "text-orange-500" },
-  3: { label: "Medium", color: "text-yellow-500" },
-  4: { label: "Low", color: "text-blue-400" },
+const priorityConfig: Record<number, { color: string; bar: string }> = {
+  0: { color: "text-muted-foreground/40", bar: "bg-muted-foreground/20" },
+  1: { color: "text-red-500", bar: "bg-red-500" },
+  2: { color: "text-orange-500", bar: "bg-orange-500" },
+  3: { color: "text-yellow-500", bar: "bg-yellow-500" },
+  4: { color: "text-blue-400", bar: "bg-blue-400" },
 };
 
-function PriorityIndicator({ priority }: { priority: number }) {
-  const config = priorityConfig[priority] ?? priorityConfig[0]!;
-  return <span className={`text-[10px] font-medium ${config.color}`}>{config.label}</span>;
+// ── Relative time helper ─────────────────────────────────────────────
+
+function timeAgo(dateStr: string): string {
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
 }
+
+// ── Tab definitions ──────────────────────────────────────────────────
+
+type TabId = "active" | "cycle" | "in-progress" | "backlog" | "unlabeled";
+
+interface TabDef {
+  id: TabId;
+  label: string;
+}
+
+const TABS: TabDef[] = [
+  { id: "active", label: "Active" },
+  { id: "cycle", label: "Current Cycle" },
+  { id: "in-progress", label: "In Progress" },
+  { id: "backlog", label: "Backlog" },
+  { id: "unlabeled", label: "No Label" },
+];
 
 // ── Issue card ────────────────────────────────────────────────────────
 
 function IssueCard({
   issue,
-  projects,
-  showProjectAssign,
+  availableLabels,
+  showLabelAssign,
   lygosProjects,
   linkedThread,
   onStartThread,
   onNavigateThread,
 }: {
   issue: LinearIssue;
-  projects: LinearProject[];
-  showProjectAssign: boolean;
+  availableLabels: LinearLabel[];
+  showLabelAssign: boolean;
   lygosProjects: Project[];
   linkedThread: LinkedThread | undefined;
   onStartThread: (issue: LinearIssue, projectId: ProjectId) => void;
@@ -62,14 +90,15 @@ function IssueCard({
 }) {
   const [assigning, setAssigning] = useState(false);
   const rpc = getWsRpcClient();
+  const pConfig = priorityConfig[issue.priority] ?? priorityConfig[0]!;
 
-  const handleAssignProject = useCallback(
-    async (projectId: string) => {
+  const handleAssignLabel = useCallback(
+    async (labelId: string) => {
       setAssigning(true);
       try {
-        await rpc.linear.assignProject({ issueId: issue.id, projectId });
+        await rpc.linear.assignLabel({ issueId: issue.id, labelId });
       } catch (err) {
-        console.error("Failed to assign project:", err);
+        console.error("Failed to assign label:", err);
       } finally {
         setAssigning(false);
       }
@@ -79,257 +108,150 @@ function IssueCard({
 
   return (
     <div
-      className={`flex items-start justify-between gap-3 rounded-lg border bg-card px-4 py-3 ${linkedThread ? "border-teal-500/60" : "border-border"}`}
+      className={`group relative flex flex-col rounded-xl border bg-card overflow-hidden transition-colors ${linkedThread ? "border-teal-500/60" : "border-border hover:border-border/80"}`}
     >
-      <div className="flex flex-col gap-1.5 min-w-0">
-        <div className="flex items-center gap-2">
-          <span
-            className="size-2 shrink-0 rounded-full"
-            style={{ backgroundColor: issue.state.color }}
-          />
-          <span className="text-xs font-medium text-muted-foreground">{issue.identifier}</span>
-          <span className="text-sm font-medium truncate">{issue.title}</span>
-        </div>
+      {/* Priority accent bar */}
+      <div className={`h-1 w-full ${pConfig.bar}`} />
 
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        {/* Header: identifier + state dot */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span
+              className="size-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: issue.state.color }}
+            />
+            <span className="text-xs font-semibold text-muted-foreground">{issue.identifier}</span>
+          </div>
           <Badge variant="outline" className="text-[10px] px-1.5 py-0">
             {issue.state.name}
           </Badge>
-          <PriorityIndicator priority={issue.priority} />
-          {issue.labels.map((label) => (
-            <Badge
-              key={label.id}
-              variant="outline"
-              className="text-[10px] px-1.5 py-0"
-              style={{ borderColor: label.color, color: label.color }}
-            >
-              {label.name}
-            </Badge>
-          ))}
+        </div>
+
+        {/* Title */}
+        <p className="text-sm font-medium leading-snug line-clamp-2">{issue.title}</p>
+
+        {/* Metadata row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`text-[10px] font-semibold ${pConfig.color}`}>
+            {issue.priorityLabel}
+          </span>
           {issue.cycle && (
-            <span className="text-[10px] text-muted-foreground/60">
-              <CircleDotIcon className="inline size-3 mr-0.5" />
+            <span className="text-[10px] text-muted-foreground/60 flex items-center gap-0.5">
+              <CircleDotIcon className="size-3" />
               Cycle {issue.cycle.number}
             </span>
           )}
+          {issue.project && (
+            <span className="text-[10px] text-muted-foreground/60">{issue.project.name}</span>
+          )}
         </div>
 
-        {showProjectAssign && (
-          <div className="mt-1">
-            <Select
-              value=""
-              onValueChange={(value) => {
-                if (value) void handleAssignProject(value);
-              }}
-              disabled={assigning}
-            >
-              <SelectTrigger className="h-7 w-48 text-xs">
-                <SelectValue placeholder="Assign to project..." />
-              </SelectTrigger>
-              <SelectPopup>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className="size-2 rounded-full shrink-0"
-                        style={{ backgroundColor: project.color }}
-                      />
-                      {project.name}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectPopup>
-            </Select>
+        {/* Labels */}
+        {issue.labels.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {issue.labels.map((label) => (
+              <Badge
+                key={label.id}
+                variant="outline"
+                className="text-[10px] px-1.5 py-0"
+                style={{ borderColor: label.color, color: label.color }}
+              >
+                {label.name}
+              </Badge>
+            ))}
           </div>
         )}
-      </div>
 
-      <div className="flex items-center gap-1 shrink-0">
-        {linkedThread ? (
-          <Button
-            size="xs"
-            variant="ghost"
-            title="Go to thread"
-            onClick={() => onNavigateThread(linkedThread)}
-            className="text-green-500 hover:text-green-400"
-          >
-            <MessageSquareIcon className="size-3.5" />
-          </Button>
-        ) : lygosProjects.length === 1 ? (
-          <Button
-            size="xs"
-            variant="ghost"
-            title="Start thread"
-            onClick={() => onStartThread(issue, lygosProjects[0]!.id)}
-          >
-            <PlayIcon className="size-3.5" />
-          </Button>
-        ) : lygosProjects.length > 1 ? (
+        {/* Assign label dropdown for unlabeled issues */}
+        {showLabelAssign && (
           <Select
             value=""
             onValueChange={(value) => {
-              if (value) onStartThread(issue, value as ProjectId);
+              if (value) void handleAssignLabel(value);
             }}
+            disabled={assigning}
           >
-            <SelectTrigger size="sm" variant="ghost" className="h-7 w-auto gap-1 px-1.5">
-              <PlayIcon className="size-3.5" />
-              <SelectValue placeholder="Start..." />
+            <SelectTrigger className="h-7 w-full text-xs">
+              <TagIcon className="size-3 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Assign label..." />
             </SelectTrigger>
-            <SelectPopup align="end">
-              {lygosProjects.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
+            <SelectPopup>
+              {availableLabels.map((label) => (
+                <SelectItem key={label.id} value={label.id}>
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className="size-2 rounded-full shrink-0"
+                      style={{ backgroundColor: label.color }}
+                    />
+                    {label.name}
+                  </span>
                 </SelectItem>
               ))}
             </SelectPopup>
           </Select>
-        ) : null}
-        <a
-          href={issue.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-muted-foreground/50 hover:text-foreground transition-colors p-1"
-        >
-          <ExternalLinkIcon className="size-3.5" />
-        </a>
-      </div>
-    </div>
-  );
-}
-
-// ── Group component ───────────────────────────────────────────────────
-
-function IssueGroup({
-  title,
-  color,
-  issues,
-  projects,
-  showProjectAssign,
-  lygosProjects,
-  linkedThreads,
-  onStartThread,
-  onNavigateThread,
-}: {
-  title: string;
-  color?: string | undefined;
-  issues: LinearIssue[];
-  projects: LinearProject[];
-  showProjectAssign: boolean;
-  lygosProjects: Project[];
-  linkedThreads: Record<string, LinkedThread>;
-  onStartThread: (issue: LinearIssue, projectId: ProjectId) => void;
-  onNavigateThread: (link: LinkedThread) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        {color && (
-          <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
         )}
-        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          {title}
-        </h3>
-        <span className="text-[10px] text-muted-foreground/50">{issues.length}</span>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Footer: updated time + actions */}
+        <div className="flex items-center justify-between pt-1 border-t border-border/50">
+          <span className="text-[10px] text-muted-foreground/50">
+            Updated {timeAgo(issue.updatedAt)}
+          </span>
+
+          <div className="flex items-center gap-1">
+            {linkedThread ? (
+              <Button
+                size="xs"
+                variant="ghost"
+                title="Go to thread"
+                onClick={() => onNavigateThread(linkedThread)}
+                className="text-green-500 hover:text-green-400"
+              >
+                <MessageSquareIcon className="size-3.5" />
+              </Button>
+            ) : lygosProjects.length === 1 ? (
+              <Button
+                size="xs"
+                variant="ghost"
+                title="Start thread"
+                onClick={() => onStartThread(issue, lygosProjects[0]!.id)}
+              >
+                <PlayIcon className="size-3.5" />
+              </Button>
+            ) : lygosProjects.length > 1 ? (
+              <Select
+                value=""
+                onValueChange={(value) => {
+                  if (value) onStartThread(issue, value as ProjectId);
+                }}
+              >
+                <SelectTrigger size="sm" variant="ghost" className="h-7 w-auto gap-1 px-1.5">
+                  <PlayIcon className="size-3.5" />
+                  <SelectValue placeholder="" />
+                </SelectTrigger>
+                <SelectPopup align="end">
+                  {lygosProjects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            ) : null}
+            <a
+              href={issue.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground/50 hover:text-foreground transition-colors p-1"
+            >
+              <ExternalLinkIcon className="size-3.5" />
+            </a>
+          </div>
+        </div>
       </div>
-      {issues.map((issue) => (
-        <IssueCard
-          key={issue.id}
-          issue={issue}
-          projects={projects}
-          showProjectAssign={showProjectAssign}
-          lygosProjects={lygosProjects}
-          linkedThread={linkedThreads[issue.id]}
-          onStartThread={onStartThread}
-          onNavigateThread={onNavigateThread}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ── Section component (Active / Waiting) ─────────────────────────────
-
-interface IssueGroups {
-  cycleIssues: LinearIssue[];
-  groupedIssues: Map<string, LinearIssue[]>;
-  unprojectdIssues: LinearIssue[];
-}
-
-function IssueSection({
-  label,
-  groups,
-  projects,
-  projectList,
-  lygosProjects,
-  linkedThreads,
-  onStartThread,
-  onNavigateThread,
-}: {
-  label: string;
-  groups: IssueGroups;
-  projects: Record<string, LinearProject>;
-  projectList: LinearProject[];
-  lygosProjects: Project[];
-  linkedThreads: Record<string, LinkedThread>;
-  onStartThread: (issue: LinearIssue, projectId: ProjectId) => void;
-  onNavigateThread: (link: LinkedThread) => void;
-}) {
-  const total =
-    groups.cycleIssues.length +
-    [...groups.groupedIssues.values()].reduce((n, arr) => n + arr.length, 0) +
-    groups.unprojectdIssues.length;
-
-  if (total === 0) return null;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1">
-        {label} <span className="text-muted-foreground/50 font-normal">({total})</span>
-      </h3>
-
-      {groups.cycleIssues.length > 0 && (
-        <IssueGroup
-          title="Current Cycle"
-          issues={groups.cycleIssues}
-          projects={projectList}
-          showProjectAssign={false}
-          lygosProjects={lygosProjects}
-          linkedThreads={linkedThreads}
-          onStartThread={onStartThread}
-          onNavigateThread={onNavigateThread}
-        />
-      )}
-
-      {[...groups.groupedIssues.entries()].map(([projectId, projectIssues]) => {
-        const project = projects[projectId];
-        return (
-          <IssueGroup
-            key={projectId}
-            title={project?.name ?? "Unknown Project"}
-            color={project?.color}
-            issues={projectIssues}
-            projects={projectList}
-            showProjectAssign={false}
-            lygosProjects={lygosProjects}
-            linkedThreads={linkedThreads}
-            onStartThread={onStartThread}
-            onNavigateThread={onNavigateThread}
-          />
-        );
-      })}
-
-      {groups.unprojectdIssues.length > 0 && (
-        <IssueGroup
-          title="No Project"
-          issues={groups.unprojectdIssues}
-          projects={projectList}
-          showProjectAssign={true}
-          lygosProjects={lygosProjects}
-          linkedThreads={linkedThreads}
-          onStartThread={onStartThread}
-          onNavigateThread={onNavigateThread}
-        />
-      )}
     </div>
   );
 }
@@ -342,10 +264,17 @@ function isActiveCycle(cycle: { startsAt: string; endsAt: string }): boolean {
 }
 
 export function LinearPanel() {
-  const { issues, projects, connected, linkedThreads, linkThread } = useLinearStore();
+  const {
+    issues,
+    labels: availableLabels,
+    connected,
+    linkedThreads,
+    linkThread,
+  } = useLinearStore();
   const navigate = useNavigate();
   const rpc = getWsRpcClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>("active");
   const lygosProjects = useStore((store) => store.projects);
   const sidebarThreadsById = useStore((store) => store.sidebarThreadsById);
 
@@ -403,55 +332,67 @@ export function LinearPanel() {
     }
   }, [rpc]);
 
-  const projectList = useMemo(() => Object.values(projects), [projects]);
   const issueList = useMemo(() => Object.values(issues), [issues]);
 
-  const { worktreeActive, inProgress, waiting } = useMemo(() => {
+  // Bucket issues into tab groups
+  const buckets = useMemo(() => {
     const active: LinearIssue[] = [];
-    const started: LinearIssue[] = [];
-    const rest: LinearIssue[] = [];
+    const cycle: LinearIssue[] = [];
+    const inProgress: LinearIssue[] = [];
+    const backlog: LinearIssue[] = [];
+    const unlabeled: LinearIssue[] = [];
 
     for (const issue of issueList) {
+      // Active = linked to a thread
       if (validLinkedThreads[issue.id]) {
         active.push(issue);
-      } else if (issue.state.type === "started") {
-        started.push(issue);
+        continue;
+      }
+      // Current cycle
+      if (issue.cycle && isActiveCycle(issue.cycle)) {
+        cycle.push(issue);
+        continue;
+      }
+      // No labels = unlabeled bucket
+      if (issue.labels.length === 0) {
+        unlabeled.push(issue);
+        continue;
+      }
+      // In progress vs backlog based on Linear state
+      if (issue.state.type === "started") {
+        inProgress.push(issue);
       } else {
-        rest.push(issue);
+        backlog.push(issue);
       }
-    }
-
-    function groupIssues(list: LinearIssue[]) {
-      const cycle: LinearIssue[] = [];
-      const byProject = new Map<string, LinearIssue[]>();
-      const noProject: LinearIssue[] = [];
-
-      for (const issue of list) {
-        if (issue.cycle && isActiveCycle(issue.cycle)) {
-          cycle.push(issue);
-          continue;
-        }
-        if (issue.project) {
-          const existing = byProject.get(issue.project.id);
-          if (existing) {
-            existing.push(issue);
-          } else {
-            byProject.set(issue.project.id, [issue]);
-          }
-        } else {
-          noProject.push(issue);
-        }
-      }
-
-      return { cycleIssues: cycle, groupedIssues: byProject, unprojectdIssues: noProject };
     }
 
     return {
-      worktreeActive: active,
-      inProgress: groupIssues(started),
-      waiting: groupIssues(rest),
-    };
+      active,
+      cycle,
+      "in-progress": inProgress,
+      backlog,
+      unlabeled,
+    } satisfies Record<TabId, LinearIssue[]>;
   }, [issueList, validLinkedThreads]);
+
+  // Tab counts for badges
+  const tabCounts = useMemo(
+    () =>
+      Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.length])) as Record<
+        TabId,
+        number
+      >,
+    [buckets],
+  );
+
+  // Auto-select first non-empty tab if current is empty
+  const effectiveTab = useMemo(() => {
+    if (buckets[activeTab].length > 0) return activeTab;
+    const first = TABS.find((t) => buckets[t.id].length > 0);
+    return first?.id ?? activeTab;
+  }, [activeTab, buckets]);
+
+  const currentIssues = buckets[effectiveTab];
 
   if (!connected) {
     return (
@@ -504,7 +445,7 @@ export function LinearPanel() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6">
+    <div className="flex flex-col gap-4 p-4 sm:p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium">
@@ -521,19 +462,49 @@ export function LinearPanel() {
         </Button>
       </div>
 
-      {/* Active — issues linked to a worktree/thread */}
-      {worktreeActive.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-1">
-            Active{" "}
-            <span className="text-muted-foreground/50 font-normal">({worktreeActive.length})</span>
-          </h3>
-          {worktreeActive.map((issue) => (
+      {/* Tabs */}
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-border pb-px">
+        {TABS.map((tab) => {
+          const count = tabCounts[tab.id];
+          const isActive = effectiveTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`relative shrink-0 px-3 py-2 text-xs font-medium transition-colors ${
+                isActive
+                  ? "text-foreground"
+                  : count > 0
+                    ? "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground/40 cursor-default"
+              }`}
+              disabled={count === 0}
+            >
+              {tab.label}
+              {count > 0 && (
+                <span
+                  className={`ml-1.5 text-[10px] ${isActive ? "text-foreground" : "text-muted-foreground/50"}`}
+                >
+                  {count}
+                </span>
+              )}
+              {isActive && (
+                <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-foreground" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Card grid */}
+      {currentIssues.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {currentIssues.map((issue) => (
             <IssueCard
               key={issue.id}
               issue={issue}
-              projects={projectList}
-              showProjectAssign={false}
+              availableLabels={availableLabels}
+              showLabelAssign={effectiveTab === "unlabeled"}
               lygosProjects={lygosProjects}
               linkedThread={validLinkedThreads[issue.id]}
               onStartThread={handleStartThread}
@@ -541,31 +512,11 @@ export function LinearPanel() {
             />
           ))}
         </div>
+      ) : (
+        <div className="flex items-center justify-center py-12 text-muted-foreground/50">
+          <p className="text-sm">No issues in this tab</p>
+        </div>
       )}
-
-      {/* In Progress (Linear state "started", no worktree yet) */}
-      <IssueSection
-        label="In Progress"
-        groups={inProgress}
-        projects={projects}
-        projectList={projectList}
-        lygosProjects={lygosProjects}
-        linkedThreads={validLinkedThreads}
-        onStartThread={handleStartThread}
-        onNavigateThread={handleNavigateThread}
-      />
-
-      {/* Waiting (Todo / Backlog) */}
-      <IssueSection
-        label="Waiting"
-        groups={waiting}
-        projects={projects}
-        projectList={projectList}
-        lygosProjects={lygosProjects}
-        linkedThreads={validLinkedThreads}
-        onStartThread={handleStartThread}
-        onNavigateThread={handleNavigateThread}
-      />
     </div>
   );
 }

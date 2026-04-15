@@ -6,7 +6,7 @@
  */
 import {
   type LinearIssue,
-  type LinearProject,
+  type LinearLabel,
   type LinearSnapshot,
   type ProjectId,
   type ThreadId,
@@ -21,7 +21,8 @@ export interface LinkedThread {
 
 export interface LinearStoreState {
   issues: Record<string, LinearIssue>;
-  projects: Record<string, LinearProject>;
+  /** Workspace labels available for assignment. */
+  labels: LinearLabel[];
   connected: boolean;
 
   /** Maps Linear issue ID → Lygos thread that was started from it. */
@@ -36,7 +37,7 @@ export const useLinearStore = create<LinearStoreState>()(
   persist(
     (set) => ({
       issues: {},
-      projects: {},
+      labels: [],
       connected: false,
       linkedThreads: {},
 
@@ -45,11 +46,7 @@ export const useLinearStore = create<LinearStoreState>()(
         for (const issue of snapshot.issues) {
           issues[issue.id] = issue;
         }
-        const projects: Record<string, LinearProject> = {};
-        for (const project of snapshot.projects) {
-          projects[project.id] = project;
-        }
-        set({ issues, projects, connected: snapshot.connected });
+        set({ issues, labels: [...snapshot.labels], connected: snapshot.connected });
       },
 
       linkThread: (issueId, threadId, projectId) => {
