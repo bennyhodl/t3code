@@ -13,7 +13,59 @@ This document tracks every custom change this fork carries on top of upstream `p
 5. For each conflict, consult the matching feature section below. Our extensions are almost always purely additive — preserve both sides unless upstream removed an API we depended on.
 6. After clean rebase: run `bun install`, then `bun fmt && bun lint && bun typecheck && bun run test`. All must pass.
 7. Regenerate any generated files that diverged: `apps/web/src/routeTree.gen.ts` is produced by TanStack Router — if it conflicts, prefer regenerating over hand-merging.
-8. Force-push to `origin` only after the checks pass: `git push --force-with-lease origin main`.
+8. **Run the CI-parity checks below** — these catch CI-only failures that the local test suite misses.
+9. Force-push to `origin` only after the checks pass: `git push --force-with-lease origin main`.
+
+## Post-rebase CI-parity checks
+
+The fork rewrote both GitHub Actions workflows, which means they reference fork-specific scripts and hardcoded strings that drift silently when upstream changes the source. Run these checks locally before pushing — each one corresponds to a real CI step that has failed after a past rebase.
+
+1. **Frozen lockfile**: `bun install --frozen-lockfile` must succeed unmodified. If it fails, run plain `bun install` and commit the resulting `bun.lock`. Plain `bun install` auto-resolves drift; `--frozen-lockfile` is what CI runs.
+2. **Workflow drift**: `git diff upstream/main..HEAD -- .github/workflows/` — for every fork-specific change, verify the strings still point at things that exist (script paths, file names, grep patterns).
+3. **Preload bundle grep**: `bun run build:desktop`, then re-run the exact command from the `Verify preload bundle output` step in `.github/workflows/ci.yml` — it greps for symbol names in `apps/desktop/dist-electron/preload.cjs` that must match `apps/desktop/src/preload.ts`.
+4. **Release smoke**: `node scripts/release-smoke.ts`. This script invokes the same `scripts/*.ts` files the release workflow does (`update-release-package-versions.ts`, `merge-update-manifests.ts`), so it catches script-name typos and missing-import failures before they hit Release Desktop.
+5. **Fork CI runs**: After pushing, watch the fork's runs, not upstream's. `gh run list --repo bennyhodl/t3code --limit 5`. (Plain `gh run list` defaults to upstream and will mislead you.)
+
+## Common drift surfaces (post-rebase failure modes)
+
+These are the specific failures observed after the 2026-04-21 rebase. Treat each one as a recurring suspect rather than a one-off bug.
+
+### `bun.lock` dedup drift
+
+When upstream bumps a dependency in any workspace `package.json` (e.g. PR #2072 bumped `@anthropic-ai/claude-agent-sdk` from `^0.2.77` → `^0.2.111` in `apps/server/package.json`), the lockfile diff is hundreds of lines and easy to lose to a squash. The symptom is a top-level resolution that doesn't satisfy the new constraint, plus a nested `t3/<package>` resolution that does. Locally `bun install` silently fixes it; CI's `--frozen-lockfile` exits 1 with `lockfile had changes, but lockfile is frozen`.
+
+**Fix**: `bun install` (no `--frozen-lockfile`), commit `bun.lock`.
+
+### CI workflow strings pointing at code that no longer exists
+
+The `Verify preload bundle output` step in `ci.yml` greps the built preload bundle for hardcoded symbol names. After a past edit, those strings ended up referring to `preload.js` + `getWsUrl` — neither existed (`tsdown.config.ts` outputs `.cjs`; the actual exposed API is `getLocalEnvironmentBootstrap`). Nothing type-checks workflow YAML, so the check fails only at runtime.
+
+**Fix**: After any change to `apps/desktop/src/preload.ts` or `tsdown.config.ts`, re-derive the grep pattern from the current source and update `ci.yml` in the same commit.
+
+### `node scripts/*.ts` steps without `bun install`
+
+Every script under `scripts/` imports `@effect/platform-node` and other workspace packages. The fork's rewritten `release.yml` had two jobs (`Release Smoke`, `Publish GitHub Release`) that called `node scripts/...` without an upstream `Setup Bun` + `Install dependencies` step. Symptom: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@effect/platform-node'`.
+
+**Fix**: Every job that runs `node scripts/*.ts` must have:
+```yaml
+- name: Setup Bun
+  uses: oven-sh/setup-bun@v2
+  with:
+    bun-version-file: package.json
+- name: Install dependencies
+  run: bun install --frozen-lockfile
+```
+above the `node` invocation.
+
+### Wrong script names in the rewritten release workflow
+
+The fork's `Publish GitHub Release` job invoked `node scripts/merge-mac-update-manifests.ts` — that file does not exist. The actual script is `scripts/merge-update-manifests.ts` and it takes `--platform mac` as a flag (see `scripts/release-smoke.ts` for the canonical invocation).
+
+**Fix**: Cross-reference every `node scripts/*.ts` line in `release.yml` against the actual filenames in `scripts/` and against `release-smoke.ts`, which exercises the same scripts.
+
+### Network-dependent tests on macOS
+
+Two tests in `apps/server/src/git/Layers/GitManager.test.ts` (`status ignores synthetic local branch aliases…` and `returns the correct existing PR when a slash remote…`) configure a remote URL to a real GitHub SSH URL and call `manager.status()`, which triggers a real `git fetch`. The 5s in-code timeout sometimes outlasts the macOS SSH connection attempt. They pass on Linux CI but flake locally on macOS — don't treat a local timeout here as a CI blocker without first checking the fork's CI run.
 
 ## Summary of custom feature areas
 
@@ -58,8 +110,8 @@ These are the files where both our fork and upstream make edits — rebase confl
 | `package.json`                                                      | Root-level devDeps/scripts for fork tooling                                                                                                                          | Merge carefully.                                                                                                                                                                                                                           |
 | `bun.lock`                                                          | Regenerated on `bun install`                                                                                                                                         | After all source conflicts resolved, delete the conflict markers and run `bun install` to regenerate. Never hand-merge.                                                                                                                    |
 | `scripts/build-desktop-artifact.ts` / `scripts/lib/brand-assets.ts` | Build against `assets/lygos-brand/**` instead of `assets/dev                                                                                                         | prod/\*\*`                                                                                                                                                                                                                                 | Keep our paths; re-apply on refactor. |
-| `.github/workflows/ci.yml`                                          | Simplified for private fork                                                                                                                                          | Prefer our version unless upstream adds a check we want.                                                                                                                                                                                   |
-| `.github/workflows/release.yml`                                     | Rewritten for our release pipeline (semver tagging, our uploader)                                                                                                    | Prefer our version.                                                                                                                                                                                                                        |
+| `.github/workflows/ci.yml`                                          | Simplified for private fork: `ubuntu-24.04` runners (not `blacksmith-*`), Playwright steps commented out                                                             | Prefer our structure, but the `Verify preload bundle output` grep tokens must track `apps/desktop/src/preload.ts` + `tsdown.config.ts` output extension. See "Common drift surfaces" above.                                                |
+| `.github/workflows/release.yml`                                     | Rewritten for our release pipeline: push-to-main auto-bumps patch, no nightly/tag triggers, our uploader                                                             | Prefer our structure. Every `node scripts/*.ts` step must have `Setup Bun` + `Install dependencies` upstream of it; verify script filenames against `scripts/` and against `scripts/release-smoke.ts`. See "Common drift surfaces" above.   |
 
 ## Files we own outright (no upstream counterpart at fork time — pure additions)
 
