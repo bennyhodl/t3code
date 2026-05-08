@@ -96,6 +96,9 @@ import * as ProjectFaviconResolver from "./project/ProjectFaviconResolver.ts";
 import * as T3ProjectFileLoader from "./project/T3ProjectFileLoader.ts";
 import * as ProjectSetupScriptRunner from "./project/ProjectSetupScriptRunner.ts";
 import * as RepositoryIdentityResolver from "./project/RepositoryIdentityResolver.ts";
+import { LinearManager } from "./linear/Services/LinearManager.ts";
+import { SetupManager } from "./setup/Services/SetupManager.ts";
+import { ServiceManager } from "./services/Services/ServiceManager.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
 import * as WorkspaceEntries from "./workspace/WorkspaceEntries.ts";
 import * as WorkspaceFileSystem from "./workspace/WorkspaceFileSystem.ts";
@@ -812,6 +815,37 @@ const buildAppUnderTest = (options?: {
         }),
       ),
       Layer.provideMerge(makeAuthTestLayer()),
+      Layer.provide(
+        Layer.mock(ServiceManager)({
+          list: () => Effect.succeed({ services: [], tasks: [], configLoaded: false }),
+          start: () =>
+            Effect.succeed({ id: "", type: "docker", status: "stopped", ports: [], depends: [] }),
+          stop: () =>
+            Effect.succeed({ id: "", type: "docker", status: "stopped", ports: [], depends: [] }),
+          restart: () =>
+            Effect.succeed({ id: "", type: "docker", status: "stopped", ports: [], depends: [] }),
+          startTask: () =>
+            Effect.succeed({ id: "", status: "stopped", intervalSeconds: 30, depends: [] }),
+          stopTask: () =>
+            Effect.succeed({ id: "", status: "stopped", intervalSeconds: 30, depends: [] }),
+          streamStatus: Stream.empty,
+        }),
+      ),
+      Layer.provide(
+        Layer.mergeAll(
+          Layer.mock(LinearManager)({
+            list: () => Effect.succeed({ issues: [], labels: [], connected: false }),
+            refresh: () => Effect.succeed({ issues: [], labels: [], connected: false }),
+            assignLabel: () => Effect.succeed({ issueId: "", identifier: "", labels: [] }),
+            streamStatus: Stream.empty,
+          }),
+          Layer.mock(SetupManager)({
+            list: () => Effect.succeed({ checks: [], checking: false }),
+            check: () => Effect.succeed({ checks: [], checking: false }),
+            streamStatus: Stream.empty,
+          }),
+        ),
+      ),
       Layer.provideMerge(ServerSecretStore.layer),
       Layer.provide(workspaceAndProjectServicesLayer),
       Layer.provideMerge(FetchHttpClient.layer),

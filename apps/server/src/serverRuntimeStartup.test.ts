@@ -183,6 +183,20 @@ it.effect("resolveAutoBootstrapWelcomeTargets returns existing project and threa
 
 it.effect("resolveAutoBootstrapWelcomeTargets creates a project and thread when missing", () =>
   Effect.gen(function* () {
+    // The fork's project-sync step reads $LYGOS_PATH/lygos-dev/lygos-services.yaml.
+    // Clear it so a developer's real checkout can't add project.create calls here.
+    const previousLygosPath = process.env.LYGOS_PATH;
+    delete process.env.LYGOS_PATH;
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        if (previousLygosPath === undefined) {
+          delete process.env.LYGOS_PATH;
+        } else {
+          process.env.LYGOS_PATH = previousLygosPath;
+        }
+      }),
+    );
+
     const dispatchCalls = yield* Ref.make<ReadonlyArray<string>>([]);
     const targets = yield* ServerRuntimeStartup.resolveAutoBootstrapWelcomeTargets.pipe(
       Effect.provideService(ServerConfig.ServerConfig, {

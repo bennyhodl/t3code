@@ -73,8 +73,15 @@ const unitTestProject = {
     // The web runtime suite exercises auth bootstrap, saved environments,
     // and websocket subscription lifecycles. Under the full monorepo test
     // run, those async tests can exceed Vitest's default 5s budget.
-    hookTimeout: 15_000,
-    testTimeout: 15_000,
+    //
+    // Raised past upstream's 15s for the fork: upstream CI runs on 8-vCPU
+    // Blacksmith runners, while this fork uses GitHub-hosted `ubuntu-24.04`
+    // (4 vCPU). The stash image compression suite is the binding case — its
+    // give-up path base64-encodes a stubbed 8MB blob once per ladder step
+    // (3 scales x 5 encodes), which measures ~3s locally but ~18s on a
+    // contended 4-vCPU runner, overshooting a 15s budget.
+    hookTimeout: 45_000,
+    testTimeout: 45_000,
   },
 } satisfies TestProjectInlineConfiguration;
 

@@ -14,6 +14,7 @@ import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
@@ -34,12 +35,32 @@ import * as AnalyticsService from "./telemetry/AnalyticsService.ts";
 import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
 import * as ProviderSessionReaper from "./provider/Services/ProviderSessionReaper.ts";
+import { loadServiceConfig } from "./services/Layers/ServiceConfigLoader.ts";
 import {
   formatHeadlessServeOutput,
   formatHostForUrl,
   isWildcardHost,
   issueHeadlessServeAccessInfo,
 } from "./startupAccess.ts";
+
+/**
+ * Walk up from a directory to find the nearest git repo root.
+ * Returns the directory containing .git, or null if none found.
+ */
+const findGitRoot = Effect.fn("serverRuntimeStartup.findGitRoot")(function* (startDir: string) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  let dir = path.resolve(startDir);
+  const root = path.parse(dir).root;
+  while (dir !== root) {
+    const hasGit = yield* fs.exists(path.join(dir, ".git")).pipe(Effect.orElseSucceed(() => false));
+    if (hasGit) {
+      return dir;
+    }
+    dir = path.dirname(dir);
+  }
+  return null;
+});
 
 export class ServerRuntimeStartupError extends Schema.TaggedErrorClass<ServerRuntimeStartupError>()(
   "ServerRuntimeStartupError",
@@ -242,6 +263,73 @@ export const resolveAutoBootstrapWelcomeTargets = Effect.gen(function* () {
       }
     });
   }
+
+  // ── Auto-create projects from lygos-services.yaml process cwds ──────
+  yield* Effect.gen(function* () {
+    const crypto = yield* Crypto.Crypto;
+    const config = yield* loadServiceConfig(serverConfig.cwd).pipe(
+      Effect.catch((cause) =>
+        Effect.logWarning("[project-sync] failed to load service config", { cause }).pipe(
+          Effect.as(null),
+        ),
+      ),
+    );
+    if (!config) {
+      yield* Effect.logInfo("[project-sync] no lygos-services.yaml found, skipping project sync");
+      return;
+    }
+
+    yield* Effect.logInfo("[project-sync] loaded service config", {
+      serviceCount: config.services.size,
+    });
+
+    const seenRoots = new Set<string>();
+    for (const [serviceId, def] of config.services) {
+      if (def.type !== "process" || !def.cwd) continue;
+
+      const repoRoot = yield* findGitRoot(def.cwd);
+      yield* Effect.logDebug("[project-sync] checking service", {
+        serviceId,
+        cwd: def.cwd,
+        repoRoot: repoRoot ?? "not found",
+      });
+
+      if (!repoRoot || seenRoots.has(repoRoot)) continue;
+      seenRoots.add(repoRoot);
+
+      const existing = yield* projectionReadModelQuery.getActiveProjectByWorkspaceRoot(repoRoot);
+      if (Option.isSome(existing)) {
+        yield* Effect.logDebug("[project-sync] project already exists", {
+          repoRoot,
+          projectId: existing.value.id,
+        });
+        continue;
+      }
+
+      const title = path.basename(repoRoot) || "project";
+      yield* Effect.logInfo("[project-sync] creating project", { title, repoRoot });
+      const commandUuid = yield* crypto.randomUUIDv4.pipe(Effect.orDie);
+      const projectUuid = yield* crypto.randomUUIDv4.pipe(Effect.orDie);
+      const createdAt = yield* DateTime.now;
+      yield* orchestrationEngine
+        .dispatch({
+          type: "project.create",
+          commandId: CommandId.make(commandUuid),
+          projectId: ProjectId.make(projectUuid),
+          title,
+          workspaceRoot: repoRoot,
+          createdAt: DateTime.formatIso(createdAt),
+        })
+        .pipe(
+          Effect.catch((err) =>
+            Effect.logWarning("[project-sync] failed to create project", {
+              repoRoot,
+              cause: err,
+            }),
+          ),
+        );
+    }
+  });
 
   return {
     ...(bootstrapProjectId ? { bootstrapProjectId } : {}),

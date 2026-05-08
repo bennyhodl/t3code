@@ -122,6 +122,9 @@ import {
 } from "../threadRoutes";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { formatRelativeTimeLabel } from "../timestampFormat";
+import { LinearSidebarStatus } from "./linear/LinearSidebarStatus";
+import { ServicesSidebarStatus } from "./services/ServicesSidebarStatus";
+import { SetupSidebarStatus } from "./setup/SetupSidebarStatus";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import { Kbd } from "./ui/kbd";
 import {

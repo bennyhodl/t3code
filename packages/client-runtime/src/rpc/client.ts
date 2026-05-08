@@ -51,7 +51,12 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.subscribeDiscoveredLocalServers
   | typeof WS_METHODS.previewAutomationConnect
   | typeof WS_METHODS.subscribeVcsStatus
-  | typeof WS_METHODS.terminalAttach;
+  | typeof WS_METHODS.terminalAttach
+  // Lygos fork subscriptions.
+  | typeof WS_METHODS.subscribeSetupStatus
+  | typeof WS_METHODS.subscribeLinearStatus
+  | typeof WS_METHODS.subscribeServicesStatus
+  | typeof WS_METHODS.subscribeServiceLogs;
 
 export type EnvironmentStreamCommandRpcTag =
   | typeof WS_METHODS.cloudInstallRelayClient

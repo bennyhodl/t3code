@@ -79,6 +79,25 @@ import {
   ProjectWriteFileResult,
 } from "./project.ts";
 import {
+  ServiceActionInput,
+  ServiceError,
+  ServiceLogEntry,
+  ServiceLogInput,
+  ServiceState,
+  ServicesSnapshot,
+  ServicesStatusEvent,
+  TaskActionInput,
+  TaskState,
+} from "./services.ts";
+import {
+  LinearAssignLabelInput,
+  LinearAssignLabelResult,
+  LinearError,
+  LinearSnapshot,
+  LinearStatusEvent,
+} from "./linear.ts";
+import { SetupCheckInput, SetupError, SetupSnapshot, SetupStatusEvent } from "./setup.ts";
+import {
   TerminalAttachInput,
   TerminalAttachStreamEvent,
   TerminalClearInput,
@@ -228,8 +247,31 @@ export const WS_METHODS = {
   sourceControlCloneRepository: "sourceControl.cloneRepository",
   sourceControlPublishRepository: "sourceControl.publishRepository",
 
+  // Linear methods
+  linearList: "linear.list",
+  linearRefresh: "linear.refresh",
+  linearAssignLabel: "linear.assignLabel",
+
+  // Setup methods
+  setupList: "setup.list",
+  setupCheck: "setup.check",
+
+  // Services methods
+  servicesList: "services.list",
+  servicesStart: "services.start",
+  servicesStop: "services.stop",
+  servicesRestart: "services.restart",
+  servicesStartTask: "services.startTask",
+  servicesStopTask: "services.stopTask",
+
+  servicesGetLogs: "services.getLogs",
+
   // Streaming subscriptions
   subscribeVcsStatus: "subscribeVcsStatus",
+  subscribeSetupStatus: "subscribeSetupStatus",
+  subscribeServicesStatus: "subscribeServicesStatus",
+  subscribeServiceLogs: "subscribeServiceLogs",
+  subscribeLinearStatus: "subscribeLinearStatus",
   subscribeTerminalEvents: "subscribeTerminalEvents",
   subscribeTerminalMetadata: "subscribeTerminalMetadata",
   subscribePreviewEvents: "subscribePreviewEvents",
@@ -698,6 +740,112 @@ export const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess,
   stream: true,
 });
 
+// ── Setup RPCs ────────────────────────────────────────────────────────
+
+export const WsSetupListRpc = Rpc.make(WS_METHODS.setupList, {
+  payload: Schema.Struct({}),
+  success: SetupSnapshot,
+  error: Schema.Union([SetupError, EnvironmentAuthorizationError]),
+});
+
+export const WsSetupCheckRpc = Rpc.make(WS_METHODS.setupCheck, {
+  payload: SetupCheckInput,
+  success: SetupSnapshot,
+  error: Schema.Union([SetupError, EnvironmentAuthorizationError]),
+});
+
+export const WsSubscribeSetupStatusRpc = Rpc.make(WS_METHODS.subscribeSetupStatus, {
+  payload: Schema.Struct({}),
+  success: SetupStatusEvent,
+  error: Schema.Union([SetupError, EnvironmentAuthorizationError]),
+  stream: true,
+});
+
+// ── Linear RPCs ───────────────────────────────────────────────────────
+
+export const WsLinearListRpc = Rpc.make(WS_METHODS.linearList, {
+  payload: Schema.Struct({}),
+  success: LinearSnapshot,
+  error: Schema.Union([LinearError, EnvironmentAuthorizationError]),
+});
+
+export const WsLinearRefreshRpc = Rpc.make(WS_METHODS.linearRefresh, {
+  payload: Schema.Struct({}),
+  success: LinearSnapshot,
+  error: Schema.Union([LinearError, EnvironmentAuthorizationError]),
+});
+
+export const WsLinearAssignLabelRpc = Rpc.make(WS_METHODS.linearAssignLabel, {
+  payload: LinearAssignLabelInput,
+  success: LinearAssignLabelResult,
+  error: Schema.Union([LinearError, EnvironmentAuthorizationError]),
+});
+
+export const WsSubscribeLinearStatusRpc = Rpc.make(WS_METHODS.subscribeLinearStatus, {
+  payload: Schema.Struct({}),
+  success: LinearStatusEvent,
+  error: Schema.Union([LinearError, EnvironmentAuthorizationError]),
+  stream: true,
+});
+
+// ── Services RPCs ──────────────────────────────────────────────────────
+
+export const WsServicesListRpc = Rpc.make(WS_METHODS.servicesList, {
+  payload: Schema.Struct({}),
+  success: ServicesSnapshot,
+  error: Schema.Union([ServiceError, EnvironmentAuthorizationError]),
+});
+
+export const WsServicesStartRpc = Rpc.make(WS_METHODS.servicesStart, {
+  payload: ServiceActionInput,
+  success: ServiceState,
+  error: Schema.Union([ServiceError, EnvironmentAuthorizationError]),
+});
+
+export const WsServicesStopRpc = Rpc.make(WS_METHODS.servicesStop, {
+  payload: ServiceActionInput,
+  success: ServiceState,
+  error: Schema.Union([ServiceError, EnvironmentAuthorizationError]),
+});
+
+export const WsServicesRestartRpc = Rpc.make(WS_METHODS.servicesRestart, {
+  payload: ServiceActionInput,
+  success: ServiceState,
+  error: Schema.Union([ServiceError, EnvironmentAuthorizationError]),
+});
+
+export const WsServicesStartTaskRpc = Rpc.make(WS_METHODS.servicesStartTask, {
+  payload: TaskActionInput,
+  success: TaskState,
+  error: Schema.Union([ServiceError, EnvironmentAuthorizationError]),
+});
+
+export const WsServicesStopTaskRpc = Rpc.make(WS_METHODS.servicesStopTask, {
+  payload: TaskActionInput,
+  success: TaskState,
+  error: Schema.Union([ServiceError, EnvironmentAuthorizationError]),
+});
+
+export const WsServicesGetLogsRpc = Rpc.make(WS_METHODS.servicesGetLogs, {
+  payload: ServiceLogInput,
+  success: Schema.Array(ServiceLogEntry),
+  error: Schema.Union([ServiceError, EnvironmentAuthorizationError]),
+});
+
+export const WsSubscribeServicesStatusRpc = Rpc.make(WS_METHODS.subscribeServicesStatus, {
+  payload: Schema.Struct({}),
+  success: ServicesStatusEvent,
+  error: Schema.Union([ServiceError, EnvironmentAuthorizationError]),
+  stream: true,
+});
+
+export const WsSubscribeServiceLogsRpc = Rpc.make(WS_METHODS.subscribeServiceLogs, {
+  payload: ServiceLogInput,
+  success: ServiceLogEntry,
+  error: Schema.Union([ServiceError, EnvironmentAuthorizationError]),
+  stream: true,
+});
+
 export const WsRpcGroup = RpcGroup.make(
   WsServerProbeRpc,
   WsServerGetConfigRpc,
@@ -769,4 +917,20 @@ export const WsRpcGroup = RpcGroup.make(
   WsOrchestrationGetArchivedShellSnapshotRpc,
   WsOrchestrationSubscribeShellRpc,
   WsOrchestrationSubscribeThreadRpc,
+  WsLinearListRpc,
+  WsLinearRefreshRpc,
+  WsLinearAssignLabelRpc,
+  WsSubscribeLinearStatusRpc,
+  WsSetupListRpc,
+  WsSetupCheckRpc,
+  WsSubscribeSetupStatusRpc,
+  WsServicesListRpc,
+  WsServicesStartRpc,
+  WsServicesStopRpc,
+  WsServicesRestartRpc,
+  WsServicesStartTaskRpc,
+  WsServicesStopTaskRpc,
+  WsServicesGetLogsRpc,
+  WsSubscribeServicesStatusRpc,
+  WsSubscribeServiceLogsRpc,
 );

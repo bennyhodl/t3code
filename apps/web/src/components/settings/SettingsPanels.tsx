@@ -1,7 +1,7 @@
 import { ArchiveIcon, ArchiveX, LoaderIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAtomValue } from "@effect/atom-react";
 import {
   defaultInstanceIdForDriver,
@@ -73,6 +73,7 @@ import { useArchivedThreadSnapshots } from "../../lib/archivedThreadsState";
 import { formatRelativeTimeLabel, getRelativeTimeState } from "../../timestampFormat";
 import { Button } from "../ui/button";
 import { DraftInput } from "../ui/draft-input";
+import { Input } from "../ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
 import { stackedThreadToast, toastManager } from "../ui/toast";
@@ -524,6 +525,66 @@ export function useSettingsRestore(onRestored?: () => void) {
   };
 }
 
+function LinearApiTokenRow() {
+  const settings = usePrimarySettings();
+  const updateSettings = useUpdatePrimarySettings();
+  const [showToken, setShowToken] = useState(false);
+  const savedToken = settings.linear?.apiToken ?? "";
+  const [localToken, setLocalToken] = useState(savedToken);
+  const isDirty = localToken !== savedToken;
+
+  // Sync local state when saved token changes externally
+  useEffect(() => {
+    setLocalToken(savedToken);
+  }, [savedToken]);
+
+  const handleSave = useCallback(() => {
+    updateSettings({ linear: { apiToken: localToken } });
+  }, [localToken, updateSettings]);
+
+  return (
+    <SettingsRow
+      title="API Token"
+      description="Personal API token from linear.app/settings/api. Required to view your assigned issues."
+      control={
+        <div className="flex items-center gap-2">
+          <Input
+            type={showToken ? "text" : "password"}
+            placeholder="lin_api_..."
+            className="w-56 font-mono text-xs"
+            value={localToken}
+            onChange={(event) => setLocalToken(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && isDirty) handleSave();
+            }}
+          />
+          {isDirty && (
+            <Button size="xs" variant="outline" onClick={handleSave}>
+              Save
+            </Button>
+          )}
+          <Button size="xs" variant="ghost" onClick={() => setShowToken((prev) => !prev)}>
+            {showToken ? "Hide" : "Show"}
+          </Button>
+          {savedToken.length > 0 && (
+            <Button
+              size="xs"
+              variant="ghost"
+              className="text-destructive"
+              onClick={() => {
+                setLocalToken("");
+                updateSettings({ linear: { apiToken: "" } });
+              }}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
+      }
+    />
+  );
+}
+
 export function AppearanceSettingsPanel() {
   const { theme, setTheme } = useTheme();
   const settings = usePrimarySettings();
@@ -543,7 +604,7 @@ export function AppearanceSettingsPanel() {
       <SettingsSection title="Appearance">
         <SettingsRow
           title="Theme"
-          description="Choose how T3 Code looks across the app."
+          description="Choose how Lygos Dev looks across the app."
           resetAction={
             theme !== "system" ? (
               <SettingResetButton label="theme" onClick={() => setTheme("system")} />
@@ -1145,6 +1206,10 @@ export function GeneralSettingsPanel() {
             </div>
           }
         />
+      </SettingsSection>
+
+      <SettingsSection title="Linear">
+        <LinearApiTokenRow />
       </SettingsSection>
 
       <SettingsSection title="About">

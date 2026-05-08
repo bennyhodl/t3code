@@ -33,6 +33,10 @@ import {
   derivePhysicalProjectKeyFromPath,
   selectProjectGroupingSettings,
 } from "../logicalProject";
+import { useLinearStore } from "../linearStore";
+import { useSetupStore } from "../setupStore";
+import { useServicesStore } from "../servicesStore";
+import { getWsRpcClient } from "../rpc/wsRpcClient";
 import { useUiStateStore } from "../uiStateStore";
 import { syncBrowserChromeTheme } from "../hooks/useTheme";
 import { configureClientTracing } from "../observability/clientTracing";
@@ -405,6 +409,31 @@ function EventRouter() {
   useEffect(() => {
     handleWelcome(serverWelcome);
   }, [serverWelcome]);
+
+  // Lygos fork: mirror the Services/Linear/Setup server streams into their
+  // stores. Keyed on the environment id because the RPC client now resolves
+  // per-environment -- there is nothing to subscribe to until one is connected.
+  useEffect(() => {
+    if (!serverConfig) {
+      return;
+    }
+
+    const wsRpc = getWsRpcClient();
+    const unsubServicesStatus = wsRpc.services.onStatus((snapshot) => {
+      useServicesStore.getState().applySnapshot(snapshot);
+    });
+    const unsubLinearStatus = wsRpc.linear.onStatus((snapshot) => {
+      useLinearStore.getState().applySnapshot(snapshot);
+    });
+    const unsubSetupStatus = wsRpc.setup.onStatus((snapshot) => {
+      useSetupStore.getState().applySnapshot(snapshot);
+    });
+    return () => {
+      unsubServicesStatus();
+      unsubLinearStatus();
+      unsubSetupStatus();
+    };
+  }, [serverConfig?.environment.environmentId]);
 
   useEffect(() => {
     if (serverConfigEvent === null || handledConfigEventRef.current === serverConfigEvent) {

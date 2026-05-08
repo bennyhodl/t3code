@@ -83,7 +83,9 @@ describe("brand-assets", () => {
     expect(resolveWebAssetBrandForPackageVersion("0.0.29-nightly.20260723.882")).toBe("nightly");
   });
 
-  it("keeps development, nightly, and production icon families separate", () => {
+  it("keeps the IconComposer projects on their upstream sources", () => {
+    // The fork has no .icon projects of its own, and scripts/export-brand-icons.ts
+    // still renders from these.
     expect([
       BRAND_ASSET_PATHS.developmentIconComposerProject,
       BRAND_ASSET_PATHS.nightlyIconComposerProject,
@@ -93,8 +95,19 @@ describe("brand-assets", () => {
       "assets/nightly/app-icon.icon",
       "assets/prod/app-icon.icon",
     ]);
-    expect(BRAND_ASSET_PATHS.developmentDesktopIconPng).toMatch(/^assets\/dev\/blueprint-/);
-    expect(BRAND_ASSET_PATHS.nightlyMacIconPng).toMatch(/^assets\/nightly\/nightly-/);
-    expect(BRAND_ASSET_PATHS.productionMacIconPng).toMatch(/^assets\/prod\/black-/);
+  });
+
+  it("ships Lygos branding for every shipped raster icon", () => {
+    // Unlike upstream, the fork uses one brand across dev/nightly/production.
+    for (const path of [
+      BRAND_ASSET_PATHS.developmentDesktopIconPng,
+      BRAND_ASSET_PATHS.developmentWebFaviconIco,
+      BRAND_ASSET_PATHS.nightlyMacIconPng,
+      BRAND_ASSET_PATHS.nightlyWebFaviconIco,
+      BRAND_ASSET_PATHS.productionMacIconPng,
+      BRAND_ASSET_PATHS.productionWebFaviconIco,
+    ]) {
+      expect(path).toMatch(/^assets\/lygos-brand\//);
+    }
   });
 });
